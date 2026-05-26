@@ -4,6 +4,88 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Build a Frontier-Class LLM From Scratch — DeepSeek 7B & 67B in pure PyTorch</title>
+
+<!-- ============================= SEO / META ============================= -->
+<meta name="description" content="Learn to build a frontier-class LLM from scratch in pure PyTorch. Implement DeepSeek 7B and 67B by hand — attention, rotary position embeddings (RoPE), RMSNorm, and the SwiGLU feed-forward network — in under 1,000 lines, with output token-for-token identical to the official model. No training required.">
+<meta name="keywords" content="build LLM from scratch, build DeepSeek from scratch, DeepSeek 7B, DeepSeek 67B, implement LLM in PyTorch, LLM from scratch course, transformer from scratch, build a transformer in PyTorch, attention from scratch, rotary position embeddings, RoPE from scratch, RMSNorm, SwiGLU, build a language model from scratch, frontier model architecture, how LLMs work, pure PyTorch LLM, load DeepSeek weights, run DeepSeek locally, LLM internals course, build GPT from scratch alternative">
+<meta name="author" content="Build Frontier LLMs">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://buildfrontierllms.com/">
+<meta name="theme-color" content="#0a0c0b">
+
+<!-- Open Graph (Facebook, LinkedIn, Slack, Discord, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Build Frontier LLMs">
+<meta property="og:url" content="https://buildfrontierllms.com/">
+<meta property="og:title" content="Build a Frontier-Class LLM From Scratch — DeepSeek 7B & 67B in pure PyTorch">
+<meta property="og:description" content="Implement DeepSeek 7B and 67B by hand in pure PyTorch — attention, RoPE, RMSNorm, SwiGLU — in under 1,000 lines, with output token-for-token identical to the official model. No training required.">
+<meta property="og:image" content="https://buildfrontierllms.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Build a frontier-class LLM from scratch — DeepSeek 7B & 67B in pure PyTorch.">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter / X Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://buildfrontierllms.com/">
+<meta name="twitter:title" content="Build a Frontier-Class LLM From Scratch — DeepSeek 7B & 67B in pure PyTorch">
+<meta name="twitter:description" content="Implement DeepSeek 7B and 67B by hand in pure PyTorch — attention, RoPE, RMSNorm, SwiGLU — in under 1,000 lines, token-for-token identical to the official model. No training required.">
+<meta name="twitter:image" content="https://buildfrontierllms.com/og-image.png">
+<meta name="twitter:image:alt" content="Build a frontier-class LLM from scratch — DeepSeek 7B & 67B in pure PyTorch.">
+
+<!-- Structured data: Course + Product offer -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Course",
+      "@id": "https://buildfrontierllms.com/#course",
+      "url": "https://buildfrontierllms.com/",
+      "name": "Build a Frontier-Class LLM From Scratch — DeepSeek 7B & 67B in pure PyTorch",
+      "description": "Implement DeepSeek 7B and 67B from scratch in pure PyTorch — attention, rotary position embeddings (RoPE), RMS normalization, and the SwiGLU feed-forward network — and assemble them into a working model that generates text in under 1,000 lines, with output token-for-token identical to the official model. No training required.",
+      "inLanguage": "en",
+      "teaches": [
+        "Multi-head attention from scratch",
+        "Rotary position embeddings (RoPE)",
+        "RMS normalization",
+        "SwiGLU feed-forward network",
+        "Assembling a transformer decoder in pure PyTorch",
+        "Loading official model weights and generating text",
+        "Scaling a model from 7B to 67B parameters"
+      ],
+      "coursePrerequisites": "Comfortable with Python; basic familiarity with PyTorch and tensors; a rough mental model of neural networks.",
+      "provider": {
+        "@type": "Organization",
+        "name": "Build Frontier LLMs",
+        "url": "https://buildfrontierllms.com/"
+      },
+      "offers": {
+        "@type": "Offer",
+        "category": "Founding cohort",
+        "price": "199",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/PreOrder",
+        "url": "https://buildfrontierllms.com/#enroll"
+      },
+      "hasCourseInstance": {
+        "@type": "CourseInstance",
+        "courseMode": "online",
+        "courseWorkload": "PT10H"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://buildfrontierllms.com/#website",
+      "url": "https://buildfrontierllms.com/",
+      "name": "Build Frontier LLMs",
+      "inLanguage": "en"
+    }
+  ]
+}
+</script>
+<!-- =========================== END SEO / META =========================== -->
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
