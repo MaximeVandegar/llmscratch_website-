@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build a Frontier-Class LLM From Scratch — DeepSeek 7B & 67B in pure PyTorch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0b; --bg-2:#0f1311; --panel:#111614; --panel-2:#0d110f;
+    --line:rgba(255,255,255,0.08); --line-soft:rgba(255,255,255,0.06);
+    --text:#e8ece9; --muted:#8f9a92; --muted-2:#5d6862;
+    --accent:#34d399; --accent-dim:#1f9d6e; --accent-deep:#04231a;
+    --mono:'IBM Plex Mono',ui-monospace,monospace; --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --maxw:1080px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:48px 48px;mask-image:radial-gradient(ellipse 95% 50% at 50% 0%,#000 22%,transparent 70%);opacity:.5}
+  body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(840px 460px at 78% -8%,rgba(52,211,153,0.055),transparent 60%)}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  a{color:inherit;text-decoration:none}
+
+  .top{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+  .brand{font-family:var(--mono);font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:9px}
+  .brand .dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2.6s ease-in-out infinite}
+  .brand .slash{color:var(--muted-2)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .top .nav-cta{font-family:var(--mono);font-size:13px;background:var(--accent);color:var(--accent-deep);padding:8px 16px;border-radius:9px;font-weight:600;transition:.16s}
+  .top .nav-cta:hover{transform:translateY(-1px)}
+
+  /* founding banner */
+  .fbanner{border:1px solid rgba(52,211,153,0.22);background:rgba(52,211,153,0.05);border-radius:12px;padding:12px 18px;margin:14px 0 0;font-family:var(--mono);font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .fbanner b{color:var(--accent);font-weight:600}
+  .fbanner .sep{color:var(--muted-2)}
+
+  header{padding:40px 0 26px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2)}
+  h1{font-family:var(--mono);font-weight:700;font-size:clamp(29px,4.6vw,46px);line-height:1.1;letter-spacing:-0.02em;margin:14px 0 0;max-width:18ch}
+  h1 .hl{color:var(--accent)}
+  .sub{font-size:clamp(16px,1.9vw,19px);color:var(--muted);max-width:680px;margin:18px 0 0}
+  .sub b{color:var(--text);font-weight:500}
+
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .pill{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line-soft);background:var(--panel);padding:7px 13px;border-radius:100px;display:flex;align-items:center;gap:7px}
+  .pill .d{width:5px;height:5px;border-radius:50%;background:var(--accent-dim)}
+
+  /* video */
+  .video{margin-top:30px;border:1px solid var(--line-soft);border-radius:16px;overflow:hidden;background:var(--panel-2)}
+  .video-frame{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#0c100e,#0c100e 13px,#0f1311 13px,#0f1311 26px);position:relative}
+  .play{width:78px;height:78px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s}
+  .play:hover{transform:scale(1.06)}
+  .play svg{width:27px;height:27px;margin-left:4px;fill:var(--accent-deep)}
+  .video-cap{padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--muted-2);border-top:1px solid var(--line-soft)}
+
+  /* CTA cluster */
+  .cta-cluster{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:30px}
+  .price{display:flex;align-items:baseline;gap:10px;font-family:var(--mono)}
+  .price .now{font-size:38px;font-weight:700;color:var(--text)}
+  .price .reg{font-size:20px;color:var(--muted-2);text-decoration:line-through;text-decoration-color:var(--accent-dim);align-self:center}
+  .price .reg-note{font-size:13px;color:var(--muted-2);font-family:var(--mono);align-self:center}
+  .btn{background:var(--accent);color:var(--accent-deep);border:none;cursor:pointer;font-family:var(--mono);font-weight:700;font-size:16px;padding:16px 30px;border-radius:12px;transition:.16s;display:inline-block}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(52,211,153,0.24)}
+  .btn.lg{font-size:17px;padding:18px 38px}
+  .cta-note{font-family:var(--mono);font-size:12px;color:var(--muted-2);margin-top:12px;display:flex;align-items:center;gap:7px}
+  .cta-note svg{width:13px;height:13px;stroke:var(--accent-dim);flex:none}
+
+  section{padding:58px 0;position:relative;z-index:1;border-top:1px solid var(--line-soft)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-dim);margin-bottom:14px}
+  h2{font-family:var(--mono);font-weight:600;font-size:clamp(22px,3.2vw,30px);letter-spacing:-0.01em;line-height:1.2}
+  .body-lead{color:var(--muted);max-width:680px;font-size:16.5px;margin-top:16px}
+  .body-lead b{color:var(--text);font-weight:500}
+  .em{color:var(--accent)}
+
+  /* build list */
+  .build{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:30px}
+  .bcard{border:1px solid var(--line-soft);border-radius:13px;padding:20px;background:var(--panel);transition:.2s}
+  .bcard:hover{transform:translateY(-3px);border-color:var(--line)}
+  .bcard .ic{font-family:var(--mono);font-size:11px;color:var(--accent-dim);letter-spacing:.05em}
+  .bcard h3{font-family:var(--mono);font-weight:600;font-size:16.5px;margin:8px 0 7px}
+  .bcard p{color:var(--muted);font-size:14px}
+
+  /* selling bullets */
+  .sells{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:30px}
+  .sell{border:1px solid var(--line-soft);border-radius:13px;padding:20px 22px;background:var(--panel);display:flex;gap:14px;align-items:flex-start}
+  .sell .chk{width:22px;height:22px;flex:none;border-radius:6px;background:rgba(52,211,153,0.1);display:flex;align-items:center;justify-content:center;margin-top:2px}
+  .sell .chk svg{width:13px;height:13px;stroke:var(--accent)}
+  .sell h4{font-family:var(--mono);font-size:15px;font-weight:600;margin-bottom:5px}
+  .sell p{color:var(--muted);font-size:14px}
+  .sell.small{grid-column:span 2;background:var(--panel-2);border-style:dashed}
+  .sell.small p{font-size:13.5px}
+
+  /* who / prereq columns */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px}
+  .cols h3{font-family:var(--mono);font-size:15px;font-weight:600;margin-bottom:14px;color:var(--text)}
+  .cols ul{list-style:none}
+  .cols li{color:var(--muted);font-size:15px;padding:7px 0 7px 22px;position:relative;border-bottom:1px solid var(--line-soft)}
+  .cols li:last-child{border-bottom:none}
+  .cols li::before{content:"›";position:absolute;left:4px;color:var(--accent-dim);font-family:var(--mono)}
+
+  /* pricing block */
+  .pricing{border:1px solid var(--line);border-radius:20px;padding:0;overflow:hidden;background:var(--panel);margin-top:30px}
+  .pricing-top{padding:34px 34px 28px;background:radial-gradient(560px 240px at 50% 0%,rgba(52,211,153,0.06),transparent 70%)}
+  .pricing-top .tag{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+  .pricing-top .price{margin:14px 0 4px;justify-content:flex-start}
+  .pricing-top .price .now{font-size:46px}
+  .pricing-top .lock{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:8px}
+  .pricing-incl{padding:26px 34px;border-top:1px solid var(--line-soft)}
+  .pricing-incl ul{list-style:none}
+  .pricing-incl li{color:var(--muted);font-size:14.5px;padding:8px 0 8px 26px;position:relative}
+  .pricing-incl li b{color:var(--text);font-weight:500}
+  .pricing-incl li svg{position:absolute;left:0;top:11px;width:15px;height:15px;stroke:var(--accent)}
+  .pricing-cta{padding:0 34px 34px}
+  .pricing-cta .btn{width:100%;text-align:center}
+  .guarantee{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:14px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
+  .guarantee svg{width:14px;height:14px;stroke:var(--accent-dim)}
+
+  /* instructor */
+  .inst{display:flex;gap:16px;align-items:flex-start;margin-top:24px;border:1px solid var(--line-soft);border-radius:14px;padding:22px;background:var(--panel)}
+  .inst .av{width:50px;height:50px;border-radius:50%;background:#243029;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--accent);font-weight:600}
+  .inst p{color:var(--muted);font-size:14.5px}
+  .inst b{color:var(--text);font-weight:500}
+
+  /* faq */
+  .faq{margin-top:26px;display:flex;flex-direction:column;gap:0}
+  .qa{border-bottom:1px solid var(--line-soft);padding:20px 0}
+  .qa h4{font-family:var(--mono);font-size:15.5px;font-weight:600;margin-bottom:8px}
+  .qa p{color:var(--muted);font-size:14.5px}
+
+  .final{text-align:center;border:1px solid var(--line);border-radius:20px;padding:48px 34px;background:radial-gradient(620px 280px at 50% 0%,rgba(52,211,153,0.06),transparent 70%),var(--panel);margin-top:10px}
+  .final h2{font-size:clamp(24px,3.8vw,36px)}
+  .final p{color:var(--muted);max-width:520px;margin:14px auto 26px;font-size:16px}
+
+  footer{padding:34px 0 56px;border-top:1px solid var(--line-soft);position:relative;z-index:1}
+  .foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-family:var(--mono);font-size:12px;color:var(--muted-2)}
+
+  @media(max-width:760px){
+    .build,.sells,.cols{grid-template-columns:1fr}
+    .sell.small{grid-column:span 1}
+    section{padding:46px 0}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="dot"></span>llm<span class="slash">/</span>from-scratch</div>
+    <a href="#enroll" class="nav-cta">Join founding cohort →</a>
+  </div>
+  <div class="fbanner">
+    <b>◆ FOUNDING COHORT — EARLY ACCESS</b>
+    <span class="sep">·</span> Part 1 available now
+    <span class="sep">·</span> full course completed mid-June 2026
+    <span class="sep">·</span> founding price locked for life
+  </div>
+</div>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">PURE PYTORCH · DEEPSEEK 7B &amp; 67B</div>
+    <h1>Build a frontier-class LLM from scratch — and leave nothing <span class="hl">hidden</span>.</h1>
+    <p class="sub">
+      Most courses teach you to build a toy language model. This one teaches you to write the <b>actual code behind a frontier model</b>.
+      You'll implement DeepSeek 7B and 67B in pure PyTorch — attention, rotary position embeddings, RMS normalization, the SwiGLU
+      feed-forward network — and assemble them into a working model that generates text. Less than a thousand lines, nothing hidden.
+      By the end, no frontier language model is a black box to you.
+    </p>
+
+    <div class="pills">
+      <span class="pill"><span class="d"></span>Pure PyTorch</span>
+      <span class="pill"><span class="d"></span>&lt; 1,000 lines</span>
+      <span class="pill"><span class="d"></span>Loads the official weights</span>
+      <span class="pill"><span class="d"></span>No training required</span>
+      <span class="pill"><span class="d"></span>7B &amp; 67B</span>
+      <span class="pill"><span class="d"></span>Token-for-token identical to the official model</span>
+    </div>
+
+    <div class="video">
+      <div class="video-frame">
+        <!-- ↓ PASTE YOUR 8-MIN VIDEO EMBED HERE (replace this .play block with an <iframe>) ↓ -->
+        <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      </div>
+      <div class="video-cap">// watch: what you build, and why it's not a toy</div>
+    </div>
+
+    <div class="cta-cluster">
+      <div class="price">
+        <span class="now">$199</span>
+        <span class="reg">$349</span>
+        <span class="reg-note">founding price</span>
+      </div>
+      <a href="#enroll" class="btn lg">Join the founding cohort →</a>
+    </div>
+    <div class="cta-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+      Get Part 1 today · every update through completion · price never goes up for you
+    </div>
+  </div>
+</header>
+
+<!-- TOY VS FRONTIER -->
+<section>
+  <div class="wrap">
+    <div class="kicker">Why this is different</div>
+    <h2>You've built the 6-layer tutorial transformer. This is the real recipe.</h2>
+    <p class="body-lead">
+      The gap between a toy GPT and a model people actually deploy isn't size — it's the <b>exact</b> details: the rotary embedding
+      convention that has to match the saved weights, the normalization placement, the gated feed-forward, the numerical care that
+      keeps everything stable. Get them right and your code runs the real weights and produces output
+      <span class="em">token-for-token identical to the official model</span>. Not "close enough." Identical.
+    </p>
+  </div>
+</section>
+
+<!-- WHAT YOU BUILD -->
+<section>
+  <div class="wrap">
+    <div class="kicker">What you build</div>
+    <h2>Every component, by hand, in pure PyTorch.</h2>
+    <div class="build">
+      <div class="bcard"><div class="ic">01</div><h3>Multi-Head Attention</h3><p>The core mechanism, the scaling that's easy to get subtly wrong, and the causal mask — written from scratch.</p></div>
+      <div class="bcard"><div class="ic">02</div><h3>Rotary Position Embeddings</h3><p>The exact rotary convention the saved weights expect — the detail that makes the difference between "works" and "garbage out."</p></div>
+      <div class="bcard"><div class="ic">03</div><h3>RMS Normalization</h3><p>Pre-norm placement and the numerical handling that keeps a deep stack stable.</p></div>
+      <div class="bcard"><div class="ic">04</div><h3>SwiGLU Feed-Forward</h3><p>The gated MLP that replaced the classic ReLU block in modern frontier models.</p></div>
+      <div class="bcard"><div class="ic">05</div><h3>Assemble the model</h3><p>Wire the blocks into a complete decoder, load the official weights, and watch it generate real text.</p></div>
+      <div class="bcard"><div class="ic">06</div><h3>Scale 7B → 67B</h3><p>The same code, scaled by configuration — go from the 7B to the 67B model.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SELLING BULLETS -->
+<section>
+  <div class="wrap">
+    <div class="kicker">What you walk away with</div>
+    <h2>Not a tutorial. The actual architecture behind frontier models.</h2>
+    <div class="sells">
+      <div class="sell"><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg></span><div><h4>Output identical to the official model</h4><p>Your implementation runs the real weights and produces text token-for-token identical to the official release.</p></div></div>
+      <div class="sell"><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg></span><div><h4>Under 1,000 lines, nothing hidden</h4><p>No framework magic, no black boxes. Clean, readable PyTorch you fully understand and can modify.</p></div></div>
+      <div class="sell"><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg></span><div><h4>67B that beat Llama 2 70B</h4><p>The 67B you build outperformed Llama 2 70B on reasoning, code, and math — with fewer parameters.</p></div></div>
+      <div class="sell"><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg></span><div><h4>The same family, end to end</h4><p>Learn the proven architecture used across modern open models — the foundation, not a simplified stand-in.</p></div></div>
+      <div class="sell small"><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg></span><div><h4>Same lineage now powers DeepSeek V4</h4><p>DeepSeek's latest model, V4 (April 2026), reaches near-frontier performance at 1.6T parameters — at a fraction of the cost of comparable closed models. You're learning the foundations of that family.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- NO TRAINING CLARITY -->
+<section>
+  <div class="wrap">
+    <div class="kicker">Set expectations straight</div>
+    <h2>This is about <span class="em">building and running</span> the model — not training one.</h2>
+    <p class="body-lead">
+      You implement the architecture and run the real model using the official released weights. <b>No multi-week GPU runs, no
+      training-data pipeline, no cluster.</b> That's the point: you get the full understanding of how a frontier model is built and
+      how it produces text, on hardware you already have — without the cost and complexity of pre-training.
+    </p>
+  </div>
+</section>
+
+<!-- WHO / PREREQ -->
+<section>
+  <div class="wrap">
+    <div class="kicker">Fit check</div>
+    <h2>Who it's for.</h2>
+    <div class="cols">
+      <div>
+        <h3>This is for you if…</h3>
+        <ul>
+          <li>You use LLMs as black boxes and want to know what's actually inside</li>
+          <li>You need to modify architectures, not just prompt them</li>
+          <li>You've outgrown toy tutorial models and want the real recipe</li>
+          <li>You want to answer "how does a transformer really work?" without bluffing</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Prerequisites</h3>
+        <ul>
+          <li>Comfortable with Python</li>
+          <li>Basic familiarity with PyTorch and tensors</li>
+          <li>A rough mental model of neural networks</li>
+          <li>No prior LLM-internals knowledge needed — that's what you're here for</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="enroll">
+  <div class="wrap">
+    <div class="kicker">Founding cohort</div>
+    <h2>Get in early. Lock the founding price.</h2>
+    <div class="pricing">
+      <div class="pricing-top">
+        <div class="tag">◆ Founding price — before launch</div>
+        <div class="price">
+          <span class="now">$199</span>
+        </div>
+        <div class="lock">Price rises to <b style="color:var(--text);font-weight:500">$349</b> at launch — founders keep $199 for life.</div>
+      </div>
+      <div class="pricing-incl">
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><b>Part 1 — available today.</b> Start building immediately.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><b>The complete course — completed mid-June 2026.</b> Delivered as it ships, at no extra cost.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><b>All the code.</b> The full under-1,000-line implementation, yours to keep and modify.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><b>Lifetime access &amp; updates.</b> Including everything added after launch.</li>
+        </ul>
+      </div>
+      <div class="pricing-cta">
+        <!-- ↓ POINT THIS AT YOUR CHECKOUT (e.g. Teachable purchase URL) ↓ -->
+        <a href="#" class="btn lg">Join the founding cohort — $199</a>
+        <div class="guarantee">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3l7 4v5c0 4-3 7-7 8-4-1-7-4-7-8V7z"/></svg>
+          Founding guarantee: if the full course isn't delivered by mid-June, full refund.
+        </div>
+      </div>
+    </div>
+
+    <div class="inst">
+      <div>
+        <p style="margin-bottom:6px"><b>Taught by the instructor behind the NeRF &amp; 3D Gaussian Splatting from-scratch courses.</b></p>
+        <p>Over <b>800 students worldwide</b>, rated <b>4.5 / 5</b> across <b>150+ verified reviews</b> — same from-first-principles, pure-PyTorch approach, now applied to frontier LLMs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="wrap">
+    <div class="kicker">Questions</div>
+    <h2>Straight answers.</h2>
+    <div class="faq">
+      <div class="qa"><h4>Is the course finished?</h4><p>Part 1 is available now and you can start today. The complete course is finished by mid-June 2026 and delivered to you as it ships — and if it isn't, you get a full refund. The founding price is your reward for getting in before then.</p></div>
+      <div class="qa"><h4>Do I have to train a model? What GPU do I need?</h4><p>No training. You implement the architecture and run the official released weights, so there's no multi-week training run. The 7B build runs on modest hardware; the 67B is far heavier to run but the code is identical — you'll understand exactly what scaling it requires.</p></div>
+      <div class="qa"><h4>How is this different from a "build GPT" tutorial?</h4><p>Those build a small teaching model. Here you build the real architecture and load the actual released weights, so the output is token-for-token identical to the official model — not an approximation.</p></div>
+      <div class="qa"><h4>What do I need to know going in?</h4><p>Comfort with Python and basic PyTorch. You don't need any prior knowledge of LLM internals — that's the point of the course.</p></div>
+      <div class="qa"><h4>Why is it called "founding"?</h4><p>You're buying before the course is complete, at a lower price, and helping shape it. In exchange you lock $199 for life while everyone after launch pays $349.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section style="border-top:none">
+  <div class="wrap">
+    <div class="final">
+      <h2>Stop using frontier models as black boxes.</h2>
+      <p>Build one yourself — under 1,000 lines, identical to the real thing. Join the founding cohort at $199 before it goes to $349.</p>
+      <a href="#" class="btn lg">Join the founding cohort — $199</a>
+      <div class="cta-note" style="justify-content:center;margin-top:16px">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+        Part 1 today · complete by mid-June · full refund if not delivered
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>llm/from-scratch · build the model family, not just a model</div>
+    <div>DeepSeek 7B &amp; 67B · pure PyTorch</div>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('a[href^="#"]').forEach(a=>{
+    a.addEventListener('click',e=>{const t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth'});}});
+  });
+</script>
+</body>
+</html>
